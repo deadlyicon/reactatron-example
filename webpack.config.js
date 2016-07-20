@@ -1,8 +1,26 @@
 var fs = require('fs');
 var path = require('path');
 var webpack = require('webpack');
+var ExtractTextPlugin = require("extract-text-webpack-plugin");
+
+require('./config/environment')
+
+
+if (process.env.NODE_ENV === 'development'){
+  require('dotenv').load();
+}
 
 var root  = __dirname
+
+var processDotEnvPlugin = new webpack.DefinePlugin({
+  'process.env': {
+    NODE_ENV:  JSON.stringify(process.env.NODE_ENV),
+    PORT:      JSON.stringify(process.env.PORT),
+    APP_ROOT:  JSON.stringify(process.env.APP_ROOT),
+    DIST_PATH: JSON.stringify(process.env.DIST_PATH),
+  }
+})
+
 
 // this lists all node_modules as external so they dont
 // get packaged and the requires stay as is.
@@ -24,9 +42,16 @@ var sourceMapSupperBannerPlugin = new webpack.BannerPlugin(
 
 
 var serverJs = {
+  target: 'node',
+  node: {
+    __filename: false,
+    __dirname: false
+  },
+  console: true,
+  process: true,
+
   context: root+'/server',
   entry: root+'/server/index.js',
-  target: 'node',
   output: {
     path: root+'/dist',
     filename: 'server.js',
@@ -55,13 +80,19 @@ var serverJs = {
 
 var browserJs = {
   context: root+'/browser',
-  entry: root+'/browser/index.js',
+  entry: {
+    browser: root+'/browser/index.js',
+  },
   output: {
     path: root+'/dist/public',
-    filename: 'browser.js',
+    filename: "[name].js",
+    chunkFilename: "[id].js",
     publicPath: '/'
   },
   devtool: 'sourcemap',
+  plugins: [
+    new ExtractTextPlugin('[name].css')
+  ],
   module: {
     loaders: [
       {
@@ -73,15 +104,58 @@ var browserJs = {
           plugins: ['transform-runtime'],
           cacheDirectory: true
         }
+      },
+      {
+        test: /\.sass$/,
+        loader: ExtractTextPlugin.extract("style", "css!sass")
       }
+    //   {
+    //     test: /\.css$/,
+    //     loader: ExtractTextPlugin.extract("style", "css")
+    //   },
+    //   {
+    //     test: /\.(scss|sass)$/,
+    //     // loaders: ["style", "css?sourceMap", "sass?sourceMap"]
+    //     // loader: ExtractTextPlugin.extract("style", "css?sourceMap", "sass?sourceMap")
+    //     loader: ExtractTextPlugin.extract("style", "css", "sass?sourceComments")
+    //   }
     ]
   },
 };
 
 
-var clientCss = {
-
-};
+// var browserCss = {
+//   context: root+'/browser/view/styles',
+//   entry: root+'/browser/view/styles/index.sass',
+//   output: {
+//     path: root+'/tmp',
+//     filename: "[name].jz",
+//     chunkFilename: "[id].jz"
+//   },
+//   // devtool: 'sourcemap',
+//   plugins: [
+//     new ExtractTextPlugin(root+'/dist/public/browser.css', {
+//       allChunks: true
+//     })
+//   ],
+//   module: {
+//     loaders: [
+//       {
+//         test: /\.css$/,
+//         loader: ExtractTextPlugin.extract("style", "css")
+//       },
+//       {
+//         test: /\.(scss|sass)$/,
+//         // loaders: ["style", "css?sourceMap", "sass?sourceMap"]
+//         // loader: ExtractTextPlugin.extract("style", "css?sourceMap", "sass?sourceMap")
+//         loader: ExtractTextPlugin.extract("style", "css", "sass?sourceComments")
+//       }
+//     ]
+//   },
+//   sassLoader: {
+//     // includePaths: [path.resolve(__dirname, "./some-folder")]
+//   }
+// };
 
 module.exports = [
   serverJs,
